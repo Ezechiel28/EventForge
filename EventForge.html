@@ -1,0 +1,1204 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>EventForge</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout concept: a workspace. Top bar, a five-step rail, a persistent deadline strip, then a form column beside live status panels. */
+:root{
+  --bg:#F3F5F8; --surface:#FFFFFF; --surface-2:#E9EDF3; --ink:#121B27; --ink-2:#4A5668; --line:#D3DAE5;
+  --accent:#2848D4; --accent-ink:#FFFFFF; --accent-soft:#E2E8FC;
+  --ok:#157A43; --ok-soft:#DCF1E4; --bad:#B8302A; --bad-soft:#FADFDC; --warn:#8A5700; --warn-soft:#FAEBC6;
+  --font-display:'Bricolage Grotesque','Segoe UI',system-ui,sans-serif;
+  --font-body:'IBM Plex Sans','Segoe UI',system-ui,sans-serif;
+  --font-mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E141C; --surface:#161F2B; --surface-2:#1F2A39; --ink:#E7ECF3; --ink-2:#9DABBF; --line:#2C394B;
+    --accent:#8CA0FF; --accent-ink:#0E141C; --accent-soft:#222E57;
+    --ok:#4CC68A; --ok-soft:#14352A; --bad:#FF8F88; --bad-soft:#40201E; --warn:#F2C25B; --warn-soft:#3B2E10;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E141C; --surface:#161F2B; --surface-2:#1F2A39; --ink:#E7ECF3; --ink-2:#9DABBF; --line:#2C394B;
+  --accent:#8CA0FF; --accent-ink:#0E141C; --accent-soft:#222E57;
+  --ok:#4CC68A; --ok-soft:#14352A; --bad:#FF8F88; --bad-soft:#40201E; --warn:#F2C25B; --warn-soft:#3B2E10;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:18px 64px}
+.app{max-width:1160px;margin:0 auto}
+h1,h2,h3,h4{font-family:var(--font-display);line-height:1.15;text-wrap:balance;margin:0;font-weight:700}
+h1{font-size:1.7rem} h2{font-size:1.25rem} h3{font-size:1.05rem} h4{font-size:.95rem}
+p{margin:0}
+.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--ink-2)} .small{font-size:.85rem}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* top bar */
+.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.brand{font-family:var(--font-display);font-weight:700;font-size:1.25rem;letter-spacing:-.01em}
+.brand small{font-family:var(--font-body);font-weight:400;font-size:.8rem;color:var(--ink-2);margin-left:8px}
+.grow{flex:1 1 auto;min-width:0}
+.saved{font-size:.8rem;color:var(--ink-2)}
+.saved.bad{color:var(--bad)}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--line);background:var(--surface);
+  padding:8px 14px;border-radius:6px;cursor:pointer;font-weight:500;line-height:1.2;min-height:38px}
+.btn:hover{border-color:var(--ink-2)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.ghost{background:transparent}
+.btn.danger{color:var(--bad);border-color:var(--bad)}
+.btn.sm{padding:5px 10px;min-height:30px;font-size:.85rem}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+
+/* panels */
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:18px;min-width:0}
+.panel + .panel{margin-top:16px}
+.panel > h2,.panel > h3{margin-bottom:6px}
+.panel .lead{color:var(--ink-2);margin-bottom:14px}
+.stack{display:grid;gap:16px;min-width:0}
+.cols2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}
+.cols3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+@media (max-width:720px){.cols2,.cols3{grid-template-columns:minmax(0,1fr)}}
+
+/* forms */
+.field{display:grid;gap:5px;min-width:0}
+.field > label,.field > .lab{font-weight:600;font-size:.9rem}
+.req{color:var(--bad);margin-left:2px}
+.hint{font-size:.82rem;color:var(--ink-2)}
+.err{font-size:.82rem;color:var(--bad);font-weight:500}
+input[type=text],input[type=date],input[type=time],input[type=url],select,textarea{width:100%;background:var(--surface);border:1px solid var(--line);
+  border-radius:6px;padding:9px 10px;min-height:38px}
+textarea{resize:vertical;line-height:1.45}
+input[aria-invalid="true"],textarea[aria-invalid="true"]{border-color:var(--bad)}
+input[type=color]{width:44px;height:38px;padding:2px;border:1px solid var(--line);border-radius:6px;background:var(--surface)}
+input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent)}
+.check{display:flex;gap:10px;align-items:flex-start}
+
+/* stepper */
+.stepper{list-style:none;margin:0 0 12px;padding:0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.step{display:flex;align-items:center;gap:8px;width:100%;border:1px solid var(--line);background:var(--surface);border-radius:6px;
+  padding:8px 10px;cursor:pointer;text-align:left;min-height:44px}
+.step .n{flex:none;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-family:var(--font-mono);font-size:.78rem;
+  background:var(--surface-2);font-weight:500}
+.step .t{font-weight:600;font-size:.88rem;min-width:0}
+.step .t small{display:block;font-weight:400;color:var(--ink-2);font-size:.74rem}
+.step.done .n{background:var(--ok);color:var(--surface)}
+.step[aria-current="step"]{border-color:var(--accent);box-shadow:inset 0 -3px 0 var(--accent)}
+.step[aria-current="step"] .n{background:var(--accent);color:var(--accent-ink)}
+@media (max-width:760px){
+  .step{justify-content:center;padding:6px}
+  .step .t{display:none}
+  .step[aria-current="step"] .t{display:none}
+  .stepcur{display:block!important}
+}
+.stepcur{display:none;font-weight:600;margin:0 0 10px}
+
+/* strip */
+.strip{display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 14px;margin-bottom:16px}
+.strip .it{display:grid;min-width:0}
+.strip .it span:first-child{font-size:.7rem;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-2)}
+.strip .it span:last-child{font-weight:600;font-size:.9rem}
+.badge{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:99px;font-size:.8rem;font-weight:600;border:1px solid transparent;white-space:nowrap}
+.badge.ok{background:var(--ok-soft);color:var(--ok);border-color:var(--ok)}
+.badge.warn{background:var(--warn-soft);color:var(--warn);border-color:var(--warn)}
+.badge.bad{background:var(--bad-soft);color:var(--bad);border-color:var(--bad)}
+.badge.neutral{background:var(--surface-2);color:var(--ink-2);border-color:var(--line)}
+.badge.accent{background:var(--accent-soft);color:var(--accent);border-color:var(--accent)}
+.note{border-left:4px solid var(--line);background:var(--surface-2);padding:10px 12px;border-radius:0 6px 6px 0;font-size:.9rem}
+.note.ok{border-color:var(--ok);background:var(--ok-soft)}
+.note.warn{border-color:var(--warn);background:var(--warn-soft)}
+.note.bad{border-color:var(--bad);background:var(--bad-soft)}
+.note strong{display:block;margin-bottom:2px}
+
+/* choice buttons */
+.choice{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+@media (max-width:640px){.choice{grid-template-columns:minmax(0,1fr)}}
+.opt{display:grid;gap:4px;text-align:left;border:2px solid var(--line);background:var(--surface);border-radius:8px;padding:14px;cursor:pointer}
+.opt span{color:var(--ink-2);font-size:.88rem}
+.opt:hover{border-color:var(--ink-2)}
+.opt.on{border-color:var(--accent);background:var(--accent-soft)}
+.opt.on strong::before{content:"\2713  "}
+
+/* calendar */
+.calwrap{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:16px;margin-top:16px}
+@media (max-width:900px){.calwrap{grid-template-columns:minmax(0,1fr)}}
+.calhead{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.calhead h3{flex:1;text-align:center;font-size:1.15rem}
+.wk,.grid7{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.wk div{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-2);text-align:center;padding:4px 0}
+.cell{position:relative;display:grid;grid-template-rows:auto 1fr;align-content:space-between;min-height:58px;padding:5px 6px;border-radius:4px;
+  border:2px solid transparent;cursor:pointer;text-align:left;background:var(--surface-2);line-height:1.1}
+.cell.blank{visibility:hidden;border:0;pointer-events:none}
+.cell .n{font-family:var(--font-mono);font-weight:500;font-size:.95rem}
+.cell .m{display:flex;justify-content:space-between;align-items:flex-end;font-size:.7rem;font-family:var(--font-mono)}
+.cell .g{font-weight:700}
+.cell.ok{background:var(--ok-soft);border-color:var(--ok);color:var(--ok)}
+.cell.no{background:repeating-linear-gradient(135deg,var(--bad-soft) 0 6px,transparent 6px 12px),var(--bad-soft);border-color:transparent;color:var(--bad)}
+.cell.past{opacity:.55}
+.cell.neutral{color:var(--ink)}
+.cell.today{background:var(--surface-2);border:2px dashed var(--ink);color:var(--ink)}
+.cell .tg{position:absolute;top:2px;right:4px;font-size:.58rem;text-transform:uppercase;letter-spacing:.05em;font-weight:700}
+.cell.sel{outline:3px solid var(--accent);outline-offset:1px}
+.cell.sel::after{content:"";position:absolute;left:4px;bottom:4px;width:8px;height:8px;border-radius:50%;background:var(--accent)}
+.cell.sel .m{padding-left:12px}
+.legend{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:12px;font-size:.82rem}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{display:inline-block;width:16px;height:16px;border-radius:3px;border:2px solid transparent}
+.sw.ok{background:var(--ok-soft);border-color:var(--ok)}
+.sw.no{background:repeating-linear-gradient(135deg,var(--bad-soft) 0 4px,transparent 4px 8px),var(--bad-soft)}
+.sw.today{background:var(--surface-2);border:2px dashed var(--ink)}
+.sw.sel{border:3px solid var(--accent);background:transparent}
+dl.kv{display:grid;grid-template-columns:minmax(0,auto) minmax(0,1fr);gap:6px 14px;margin:0}
+dl.kv dt{color:var(--ink-2);font-size:.86rem}
+dl.kv dd{margin:0;font-weight:500;min-width:0;overflow-wrap:anywhere}
+.chk{display:grid;gap:8px;margin:0;padding:0;list-style:none}
+.chk li{display:flex;gap:10px;align-items:flex-start}
+.chk .auto{width:18px;height:18px;border-radius:4px;border:2px solid var(--line);display:grid;place-items:center;font-size:.7rem;font-weight:700;flex:none;margin-top:2px}
+.chk .auto.y{background:var(--ok);border-color:var(--ok);color:var(--surface)}
+
+/* tags */
+.tgrow{display:flex;gap:8px;align-items:center}
+.tgrow input{flex:1}
+
+/* SDGs */
+.sdgcols{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:900px){.sdgcols{grid-template-columns:minmax(0,1fr)}}
+.sdggrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.sdg{position:relative;display:grid;gap:4px;align-content:space-between;min-height:92px;padding:10px;border-radius:6px;cursor:pointer;user-select:none;border:3px solid transparent}
+.sdg .num{font-family:var(--font-mono);font-weight:500;font-size:1.3rem;line-height:1}
+.sdg .nm{font-weight:600;font-size:.82rem;line-height:1.2}
+.sdg.on{border-color:var(--ink)}
+.sdg.on::after{content:"\2713 Selected";position:absolute;top:6px;right:8px;font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em}
+.dropzone{min-height:140px;border:2px dashed var(--line);border-radius:8px;padding:10px;display:grid;gap:10px;align-content:start}
+.dropzone.over{border-color:var(--accent);background:var(--accent-soft)}
+.selsdg{border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--surface)}
+.selsdg .hd{display:flex;gap:8px;align-items:center;padding:8px 10px}
+.selsdg .hd .nm{font-weight:600;font-size:.88rem;flex:1;min-width:0}
+.selsdg .bd{padding:8px 10px;display:grid;gap:6px;border-top:1px solid var(--line)}
+.pill{display:inline-block;padding:1px 8px;border-radius:99px;font-size:.7rem;font-weight:600;border:1px solid var(--line);color:var(--ink-2)}
+.sug{display:grid;gap:8px;padding:10px;border:1px dashed var(--accent);border-radius:6px;background:var(--accent-soft)}
+
+/* pubmat */
+.types{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px}
+.tcard{border:2px solid var(--line);border-radius:6px;padding:10px;background:var(--surface);display:flex;gap:10px;cursor:pointer;align-items:flex-start;text-align:left;width:100%}
+.tcard.on{border-color:var(--accent);background:var(--accent-soft)}
+.tcard .tick{flex:none;width:18px;height:18px;border:2px solid var(--ink-2);border-radius:4px;display:grid;place-items:center;font-size:.7rem;font-weight:700;margin-top:2px}
+.tcard.on .tick{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.pmset{border:1px solid var(--line);border-radius:6px;padding:14px;display:grid;gap:12px;background:var(--surface)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:99px;padding:3px 4px 3px 8px;font-size:.85rem;background:var(--surface)}
+.chip i{width:14px;height:14px;border-radius:50%;border:1px solid var(--ink-2);display:inline-block}
+.chip button{border:0;background:transparent;cursor:pointer;width:22px;height:22px;border-radius:50%;line-height:1}
+.chip button:hover{background:var(--surface-2)}
+
+/* output */
+.tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.tab{border:1px solid var(--line);background:var(--surface);padding:8px 14px;border-radius:6px;cursor:pointer;font-weight:600}
+.tab[aria-selected="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.pcard{border:1px solid var(--line);border-radius:8px;background:var(--surface);overflow:hidden}
+.pcard + .pcard{margin-top:16px}
+.pcard .ph{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid var(--line);background:var(--surface-2)}
+.pcard .pb{padding:14px 16px;display:grid;gap:12px}
+.plabel{font-size:.72rem;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-2);font-weight:600}
+.prompt{white-space:pre-wrap;font-family:var(--font-mono);font-size:.82rem;line-height:1.55;background:var(--surface-2);border-radius:6px;padding:12px;max-height:380px;overflow:auto;overflow-wrap:anywhere;margin:0}
+textarea.prompt{width:100%;max-height:none;border:1px solid var(--accent)}
+.sumsec{padding:16px 0;border-top:1px solid var(--line)}
+.sumsec:first-of-type{border-top:0;padding-top:0}
+.sumsec h3{margin-bottom:10px}
+
+/* dashboard */
+.dgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.dcard{display:grid;gap:10px;align-content:space-between}
+.dcard .meta{display:grid;gap:3px;font-size:.88rem;color:var(--ink-2)}
+.empty{text-align:center;padding:36px 18px;display:grid;gap:12px;justify-items:center}
+.empty p{max-width:46ch;color:var(--ink-2)}
+textarea.json{font-family:var(--font-mono);font-size:.78rem;min-height:140px}
+.navrow{display:flex;justify-content:space-between;gap:10px;margin-top:20px;flex-wrap:wrap}
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);
+  padding:10px 16px;border-radius:6px;font-size:.88rem;font-weight:500;z-index:50;max-width:min(92vw,520px);opacity:0;pointer-events:none;transition:opacity .15s}
+#toast.show{opacity:1}
+@media (prefers-reduced-motion:reduce){#toast{transition:none}}
+</style>
+<div class="app" id="app"></div>
+<div id="toast" role="status" aria-live="polite"></div>
+<script>
+'use strict';
+// <logic>
+const MS_DAY = 86400000;
+const pad2 = n => String(n).padStart(2, '0');
+const toISO = (y, m, d) => y + '-' + pad2(m) + '-' + pad2(d);
+function parseISO(s) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || '');
+  if (!m) return null;
+  const y = +m[1], mo = +m[2], d = +m[3];
+  const dt = new Date(Date.UTC(y, mo - 1, d));
+  if (dt.getUTCFullYear() !== y || dt.getUTCMonth() !== mo - 1 || dt.getUTCDate() !== d) return null;
+  return { y, m: mo, d };
+}
+const dayNum = o => Math.round(Date.UTC(o.y, o.m - 1, o.d) / MS_DAY);
+function fromDayNum(n) { const dt = new Date(n * MS_DAY); return { y: dt.getUTCFullYear(), m: dt.getUTCMonth() + 1, d: dt.getUTCDate() }; }
+const addDays = (o, n) => fromDayNum(dayNum(o) + n);
+const diffDays = (a, b) => dayNum(a) - dayNum(b);
+const isoOf = o => toISO(o.y, o.m, o.d);
+function localToday(now) { now = now || new Date(); return { y: now.getFullYear(), m: now.getMonth() + 1, d: now.getDate() }; }
+const daysInMonth = (y, m) => new Date(Date.UTC(y, m, 0)).getUTCDate();
+const weekdayOf = o => new Date(Date.UTC(o.y, o.m - 1, o.d)).getUTCDay();
+const requiredLead = subsidy => subsidy === true ? 21 : 14;
+
+// Core assessment of one event date against today's date.
+function assess(eventObj, subsidy, today) {
+  if (!eventObj) return null;
+  const req = requiredLead(subsidy);
+  const lead = diffDays(eventObj, today);
+  const deadline = addDays(eventObj, -req);
+  const daysToDeadline = diffDays(deadline, today);
+  const eligible = lead >= req;
+  let status;
+  if (lead <= 0) status = 'late';
+  else if (daysToDeadline < 0) status = 'insufficient';
+  else if (daysToDeadline <= 3) status = 'approaching';
+  else status = 'ontrack';
+  return { req, lead, deadline, daysToDeadline, eligible, status, past: lead < 0 };
+}
+const earliestEligible = (subsidy, today) => addDays(today, requiredLead(subsidy));
+
+const FMT_OPTS = { timeZone: 'UTC' };
+const utcDate = o => new Date(Date.UTC(o.y, o.m - 1, o.d));
+const fmtLong = o => utcDate(o).toLocaleDateString('en-US', { ...FMT_OPTS, weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+const fmtShort = o => utcDate(o).toLocaleDateString('en-US', { ...FMT_OPTS, weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+const fmtMonth = (y, m) => utcDate({ y, m, d: 1 }).toLocaleDateString('en-US', { ...FMT_OPTS, month: 'long', year: 'numeric' });
+function fmtTime(t) {
+  const m = /^(\d{2}):(\d{2})$/.exec(t || '');
+  if (!m) return '';
+  let h = +m[1]; const ap = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12;
+  return h + ':' + m[2] + ' ' + ap;
+}
+function fmtRange(a, b) {
+  const x = fmtTime(a), y = fmtTime(b);
+  if (x && y) return x + ' – ' + y;
+  return x || y || '';
+}
+const plural = (n, w) => n + ' ' + w + (Math.abs(n) === 1 ? '' : 's');
+// </logic>
+
+/* ---------- Reference data ---------- */
+const SDGS = [
+  [1, 'No Poverty', '#E5243B', ['poverty', 'low-income', 'underprivileged', 'livelihood', 'indigent', 'marginalized']],
+  [2, 'Zero Hunger', '#DDA63A', ['hunger', 'food', 'nutrition', 'farming', 'agriculture', 'feeding']],
+  [3, 'Good Health and Well-being', '#4C9F38', ['health', 'wellness', 'mental', 'medical', 'fitness', 'well-being', 'wellbeing', 'first aid', 'blood']],
+  [4, 'Quality Education', '#C5192D', ['education', 'learning', 'student', 'school', 'training', 'workshop', 'seminar', 'literacy', 'skills', 'academic', 'webinar', 'upskill', 'tutorial']],
+  [5, 'Gender Equality', '#FF3A21', ['gender', 'women', 'girls', 'female', 'sogie']],
+  [6, 'Clean Water and Sanitation', '#26BDE2', ['water', 'sanitation', 'hygiene']],
+  [7, 'Affordable and Clean Energy', '#FCC30B', ['energy', 'solar', 'renewable', 'electricity']],
+  [8, 'Decent Work and Economic Growth', '#A21942', ['employment', 'career', 'entrepreneur', 'internship', 'economic', 'freelanc', 'employab', 'job fair']],
+  [9, 'Industry, Innovation and Infrastructure', '#FD6925', ['technology', 'innovation', 'cyber', 'software', 'digital', 'engineering', 'infrastructure', 'hackathon', 'coding', 'programming', 'robotics', 'security', 'data']],
+  [10, 'Reduced Inequalities', '#DD1367', ['inclusion', 'inclusive', 'inequality', 'disability', 'pwd', 'indigenous', 'accessib', 'minority']],
+  [11, 'Sustainable Cities and Communities', '#FD9D24', ['urban', 'city', 'community', 'heritage', 'disaster', 'transport', 'housing']],
+  [12, 'Responsible Consumption and Production', '#BF8B2E', ['waste', 'recycl', 'sustainab', 'upcycl', 'zero-waste', 'circular']],
+  [13, 'Climate Action', '#3F7E44', ['climate', 'carbon', 'emission', 'global warming', 'environment']],
+  [14, 'Life Below Water', '#0A97D9', ['ocean', 'marine', 'coastal', 'fish', 'river']],
+  [15, 'Life on Land', '#56C02B', ['forest', 'tree planting', 'biodiversity', 'wildlife', 'reforest']],
+  [16, 'Peace, Justice and Strong Institutions', '#00689D', ['peace', 'justice', 'governance', 'rights', 'democra', 'corruption', 'transparency', 'legal', 'ethics', 'cybercrime']],
+  [17, 'Partnerships for the Goals', '#19486A', ['partnership', 'collaborat', 'alliance', 'multi-sector', 'sponsor', 'network']]
+].map(a => ({ n: a[0], name: a[1], color: a[2], kw: a[3] }));
+const sdgByN = n => SDGS.find(s => s.n === n);
+function textOn(hex) {
+  const v = parseInt(hex.slice(1), 16), r = v >> 16 & 255, g = v >> 8 & 255, b = v & 255;
+  const L = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return L > 0.6 ? '#121B27' : '#FFFFFF';
+}
+
+const PM_TYPES = [
+  { k: 'poster', name: 'Event Poster', platform: 'Facebook and Instagram feed; also printable', ratio: '4:5 (1080 x 1350 px)', hier: 'Event title largest, then tagline, then date and time, then venue, then audience' },
+  { k: 'program', name: 'Program Flow', platform: 'Facebook and Instagram feed', ratio: '4:5 (1080 x 1350 px)', hier: 'Header with event title and date, then a vertical timeline of time blocks with one line per activity' },
+  { k: 'speaker', name: 'Featured Speaker', platform: 'Facebook and Instagram feed', ratio: '1:1 (1080 x 1080 px)', hier: 'Portrait first, then speaker name, then credentials, then event title and date' },
+  { k: 'announce', name: 'Announcement', platform: 'Facebook and Instagram feed', ratio: '1:1 (1080 x 1080 px)', hier: 'Announcement message first, then event title, then date and venue' },
+  { k: 'register', name: 'Registration PubMat', platform: 'Facebook and Instagram feed', ratio: '4:5 (1080 x 1350 px)', hier: 'Call to action first, then event title, then date, time and venue, then registration area' },
+  { k: 'countdown', name: 'Countdown PubMat', platform: 'Instagram feed and Facebook', ratio: '1:1 (1080 x 1080 px)', hier: 'Large countdown number area first, then event title, then date' },
+  { k: 'recap', name: 'Event Recap', platform: 'Facebook and Instagram carousel', ratio: '4:5 (1080 x 1350 px)', hier: 'Event title and thank-you line first, then photo grid, then highlights' },
+  { k: 'certificate', name: 'Certificate Design', platform: 'Print, A4 landscape', ratio: 'A4 landscape (297 x 210 mm)', hier: 'Certificate title band, recipient name line, description line, then date and signature lines' },
+  { k: 'story', name: 'Social Media Story', platform: 'Instagram and Facebook Stories', ratio: '9:16 (1080 x 1920 px)', hier: 'Event title in the upper-middle safe zone, then date and time, then call to action near the lower-middle' },
+  { k: 'other', name: 'Other', platform: '', ratio: '1:1 (1080 x 1080 px)', hier: '' }
+];
+const pmType = k => PM_TYPES.find(t => t.k === k);
+const STEPS = [
+  ['Funding', 'Deadline and dates'], ['Details', 'Event information'], ['SDGs', 'Goal alignment'],
+  ['PubMat', 'Design brief'], ['Output', 'Prompts and summary']
+];
+
+/* ---------- Draft model ---------- */
+const str = x => typeof x === 'string' ? x : '';
+const uid = () => 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+function normalizeDraft(o) {
+  o = o && typeof o === 'object' ? o : {};
+  const d = {
+    id: str(o.id) || uid(), createdAt: +o.createdAt || Date.now(), updatedAt: +o.updatedAt || Date.now(),
+    subsidy: o.subsidy === true ? true : o.subsidy === false ? false : null,
+    title: str(o.title), theme: str(o.theme), date: parseISO(o.date) ? o.date : '',
+    start: str(o.start), end: str(o.end), venue: str(o.venue), participants: str(o.participants),
+    taglines: Array.isArray(o.taglines) ? o.taglines.map(str) : [], notes: str(o.notes),
+    sdgs: [], sugRejected: [], sugList: [],
+    colors: [], colorText: str(o.colorText), avoidColors: str(o.avoidColors),
+    inspiration: str(o.inspiration), refs: str(o.refs),
+    pm: {}, otherType: str(o.otherType),
+    branding: str(o.branding), logos: str(o.logos), sponsors: str(o.sponsors), typography: str(o.typography),
+    exactText: str(o.exactText), avoidElements: str(o.avoidElements), blank: !!o.blank,
+    prompts: {}, checklist: {}, lastStep: Math.min(5, Math.max(1, +o.lastStep || 1))
+  };
+  if (Array.isArray(o.sdgs)) o.sdgs.forEach(x => {
+    if (x && +x.n >= 1 && +x.n <= 17 && !d.sdgs.some(y => y.n === +x.n)) d.sdgs.push({ n: +x.n, expl: str(x.expl), src: x.src === 'suggested' ? 'suggested' : 'manual' });
+  });
+  if (Array.isArray(o.sugRejected)) d.sugRejected = o.sugRejected.map(Number).filter(n => n >= 1 && n <= 17);
+  if (Array.isArray(o.colors)) d.colors = o.colors.filter(c => c && str(c.hex)).map(c => ({ name: str(c.name), hex: str(c.hex) }));
+  PM_TYPES.forEach(t => {
+    const s = o.pm && o.pm[t.k];
+    if (s && typeof s === 'object') d.pm[t.k] = { on: !!s.on, platform: str(s.platform), ratio: str(s.ratio), hier: str(s.hier), requiredText: str(s.requiredText), extra: str(s.extra) };
+    const p = o.prompts && o.prompts[t.k];
+    if (p && typeof p === 'object') d.prompts[t.k] = { original: str(p.original), text: str(p.text), edited: !!p.edited };
+  });
+  if (o.checklist && typeof o.checklist === 'object') Object.keys(o.checklist).forEach(k => { d.checklist[k] = !!o.checklist[k]; });
+  return d;
+}
+const newDraft = () => normalizeDraft({});
+
+/* ---------- Storage ---------- */
+const STORE_KEY = 'eventforge.v1';
+let memOnly = false;
+function loadStore() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (!raw) return { drafts: [] };
+    const o = JSON.parse(raw);
+    return { drafts: (Array.isArray(o.drafts) ? o.drafts : []).map(normalizeDraft) };
+  } catch (e) { memOnly = true; return { drafts: [] }; }
+}
+let saveTimer = null, lastSaved = null;
+function saveNow() {
+  try {
+    localStorage.setItem(STORE_KEY, JSON.stringify({ version: 1, drafts: store.drafts }));
+    lastSaved = new Date(); memOnly = false;
+  } catch (e) { memOnly = true; }
+  paintSaved();
+}
+function scheduleSave() { clearTimeout(saveTimer); saveTimer = setTimeout(saveNow, 250); }
+function exportJSON(scope) {
+  const drafts = scope === 'all' ? store.drafts : store.drafts.filter(x => x.id === scope);
+  return JSON.stringify({ app: 'EventForge', version: 1, exportedAt: new Date().toISOString(), drafts }, null, 2);
+}
+function importText(txt) {
+  let o;
+  try { o = JSON.parse(txt); } catch (e) { return { err: 'That text is not valid JSON. Paste the full export, including the outer braces.' }; }
+  const arr = Array.isArray(o) ? o : (o && Array.isArray(o.drafts)) ? o.drafts : (o && typeof o === 'object' && ('title' in o || 'subsidy' in o)) ? [o] : null;
+  if (!arr || !arr.length) return { err: 'No proposals were found in that data.' };
+  let n = 0;
+  arr.forEach(raw => {
+    if (!raw || typeof raw !== 'object') return;
+    const d = normalizeDraft(raw);
+    if (store.drafts.some(x => x.id === d.id)) d.id = uid();
+    store.drafts.unshift(d); n++;
+  });
+  if (!n) return { err: 'No proposals were found in that data.' };
+  saveNow();
+  return { ok: n };
+}
+
+/* ---------- Validation and progress ---------- */
+function validate(d) {
+  const e = {};
+  if (d.subsidy === null) e.subsidy = 'Choose whether this event requests a university subsidy.';
+  if (!d.title.trim()) e.title = 'Enter the event title.';
+  if (!d.theme.trim()) e.theme = 'Enter the event theme.';
+  if (!d.date) e.date = 'Pick the event date.';
+  if (!d.start) e.start = 'Enter a start time.';
+  if (!d.end) e.end = 'Enter an end time.';
+  else if (d.start && d.end <= d.start) e.end = 'End time must be later than the start time.';
+  if (!d.venue.trim()) e.venue = 'Enter the venue or online platform.';
+  if (!d.participants.trim()) e.participants = 'Describe the participants or audience.';
+  return e;
+}
+function stepDone(d, i) {
+  if (i === 1) return d.subsidy !== null && !!d.date;
+  if (i === 2) { const e = validate(d); delete e.subsidy; delete e.date; return !Object.keys(e).length && !!d.date; }
+  if (i === 3) return d.sdgs.length > 0;
+  if (i === 4) return Object.keys(d.pm).some(k => d.pm[k].on);
+  return false;
+}
+const selectedTypes = d => PM_TYPES.filter(t => d.pm[t.k] && d.pm[t.k].on);
+function suggestSDGs(d) {
+  const text = [d.title, d.theme, d.participants, d.notes, d.inspiration].join(' ').toLowerCase();
+  const out = [];
+  SDGS.forEach(s => {
+    const hits = s.kw.filter(k => text.includes(k));
+    if (hits.length && !d.sdgs.some(x => x.n === s.n) && !d.sugRejected.includes(s.n)) out.push({ n: s.n, hits });
+  });
+  return out.sort((a, b) => b.hits.length - a.hits.length).slice(0, 6);
+}
+
+/* ---------- Status labels (shared by UI, summary and prompts) ---------- */
+const STATUS = {
+  ontrack: { label: 'On track', cls: 'ok' },
+  approaching: { label: 'Approaching deadline', cls: 'warn' },
+  insufficient: { label: 'Insufficient lead time', cls: 'bad' },
+  late: { label: 'Late submission', cls: 'bad' }
+};
+function statusMessage(d, a) {
+  const mode = d.subsidy === true ? 'university subsidy' : 'no university subsidy';
+  const dl = fmtShort(a.deadline);
+  if (a.status === 'ontrack') return 'Submit on or before ' + dl + '. ' + plural(a.daysToDeadline, 'calendar day') + ' remain before the deadline.';
+  if (a.status === 'approaching') return 'The submission deadline is ' + dl + ', ' + (a.daysToDeadline === 0 ? 'today' : 'in ' + plural(a.daysToDeadline, 'calendar day')) + '.';
+  if (a.status === 'insufficient') return 'The event is ' + plural(a.lead, 'calendar day') + ' away, but a proposal with ' + mode + ' needs ' + a.req + '. The deadline (' + dl + ') passed ' + plural(-a.daysToDeadline, 'day') + ' ago. The date has not been changed; you can keep it, and the proposal stays marked as insufficient lead time.';
+  return a.past ? 'The event date is in the past, so no submission deadline can be met. The date has not been changed.' : 'The event date is today. The submission deadline (' + dl + ') has already passed. The date has not been changed.';
+}
+
+/* ---------- Prompt engine (template based; no AI model is called) ---------- */
+const AI = { configured: false, provider: null, model: null }; // integration point for a server-side provider
+
+function paletteText(d) {
+  const parts = d.colors.map(c => (c.name.trim() ? c.name.trim() + ' ' : '') + '(' + c.hex.toUpperCase() + ')');
+  if (d.colorText.trim()) parts.push(d.colorText.trim());
+  return parts.join('; ');
+}
+const clean = s => (s || '').replace(/\s+/g, ' ').trim();
+
+function genPrompt(d, k) {
+  const t = pmType(k), s = d.pm[k] || {};
+  const name = k === 'other' ? (clean(d.otherType) || 'Custom publication material') : t.name;
+  const ratio = clean(s.ratio) || t.ratio;
+  const platform = clean(s.platform) || t.platform;
+  const hier = clean(s.hier) || t.hier;
+  const title = clean(d.title), theme = clean(d.theme), venue = clean(d.venue), who = clean(d.participants);
+  const dateO = parseISO(d.date), dateS = dateO ? fmtLong(dateO) : '', timeS = fmtRange(d.start, d.end);
+  const tags = d.taglines.map(clean).filter(Boolean);
+  const pal = paletteText(d), insp = clean(d.inspiration);
+  const req = (s.requiredText || '').trim();
+
+  const facts = { title: ['Event title', title], theme: ['Theme', theme], date: ['Date', dateS], time: ['Time', timeS], venue: ['Venue', venue], who: ['Audience', who], tags: ['Taglines', tags.map(x => '"' + x + '"').join(' | ')] };
+  const use = {
+    poster: ['title', 'theme', 'tags', 'date', 'time', 'venue', 'who'],
+    program: ['title', 'date', 'time', 'venue'],
+    speaker: ['title', 'theme', 'date', 'time', 'venue'],
+    announce: ['title', 'theme', 'date', 'time', 'venue'],
+    register: ['title', 'tags', 'date', 'time', 'venue', 'who'],
+    countdown: ['title', 'tags', 'date', 'time'],
+    recap: ['title', 'theme', 'date', 'venue'],
+    certificate: ['title', 'date', 'venue'],
+    story: ['title', 'tags', 'date', 'time', 'venue'],
+    other: ['title', 'theme', 'tags', 'date', 'time', 'venue', 'who']
+  }[k];
+  const factLines = use.map(f => facts[f]).filter(f => f[1]).map(f => '- ' + f[0] + ': ' + f[1]);
+
+  let intro, body = [], dir;
+  const hasTags = tags.length > 0;
+  switch (k) {
+    case 'poster':
+      intro = 'Design a promotional event poster, ' + ratio + ', for ' + platform + '.';
+      dir = 'A single dominant central visual drawn from the theme, a commanding title, and clear secondary details. Built to attract attention in a feed and still read when printed.';
+      body.push(['COMPOSITION', 'One strong focal illustration or graphic that expresses ' + (theme ? 'the theme "' + theme + '"' : 'the event') + '. Generous negative space around the title. Visual weight sits in the top two thirds, with the practical details grouped in a calm band below.']);
+      body.push(['TEXT HIERARCHY', hier + '.']);
+      break;
+    case 'program':
+      intro = 'Design a program flow graphic, ' + ratio + ', for ' + platform + '.';
+      dir = 'A readable schedule: a clear vertical timeline, consistent time blocks, and restrained decoration so the text always wins over the artwork.';
+      body.push(['LAYOUT', 'A header with the event title and date, then a clean vertical timeline of evenly spaced time blocks. Time on the left in a monospaced or tabular style, the activity on the right. Subtle dividers, high contrast between text and background, no busy imagery behind the schedule.']);
+      body.push(['SCHEDULE CONTENT', req ? 'Use only these program items, exactly as written, in this order:\n' + req : 'No program items were supplied. Do not invent sessions, speakers or times. Draw the timeline with empty time-block rows and blank text areas that can be filled in later.']);
+      body.push(['TEXT HIERARCHY', hier + '.']);
+      break;
+    case 'speaker':
+      intro = 'Design a featured speaker graphic, ' + ratio + ', for ' + platform + '.';
+      dir = 'Speaker-led composition with a framed portrait area, a clear name plate, and the event identity kept in a supporting role.';
+      body.push(['COMPOSITION', 'A large portrait frame as the focal point, with the name and credentials in a clear plate beside or below it. The event title and date sit in a smaller supporting band.']);
+      body.push(['SPEAKER DETAILS', req ? 'Use exactly as written (do not alter spelling, titles or credentials):\n' + req : 'No speaker details were supplied. Do not invent a name, title or credentials. Leave an empty name plate and credentials area.']);
+      body.push(['PORTRAIT', 'Do not generate a photo or likeness of a real person. Leave a clean portrait frame (circle or rounded rectangle) with a neutral placeholder so the actual speaker photo can be placed later.']);
+      body.push(['TEXT HIERARCHY', hier + '.']);
+      break;
+    case 'announce':
+      intro = 'Design an announcement graphic, ' + ratio + ', for ' + platform + '.';
+      dir = 'Bold, uncluttered, and message-first so the announcement reads in one glance.';
+      body.push(['COMPOSITION', 'A bold central message area with a simple supporting graphic from the theme. Keep the layout sparse: one idea, one focal point.']);
+      body.push(['ANNOUNCEMENT MESSAGE', req ? 'Use exactly as written:\n' + req : 'No announcement wording was supplied. Do not invent a message. Leave a large clean text area for the headline.']);
+      body.push(['TEXT HIERARCHY', hier + '.']);
+      break;
+    case 'register':
+      intro = 'Design a registration call-to-action graphic, ' + ratio + ', for ' + platform + '.';
+      dir = 'Action-oriented layout that makes the next step obvious, with event essentials close to a clearly reserved registration area.';
+      body.push(['COMPOSITION', 'A prominent call-to-action zone, event essentials grouped beside it, and a supporting thematic graphic that never competes with the call to action.']);
+      body.push(['REGISTRATION AREA', 'Leave a clean, empty square for a QR code and an empty line for the registration link. Do not draw a QR code or invent a URL, deadline or contact details.' + (req ? '\nRequired wording, exactly as written:\n' + req : '')]);
+      body.push(['TEXT HIERARCHY', hier + '.']);
+      break;
+    case 'countdown':
+      intro = 'Design a countdown graphic, ' + ratio + ', for ' + platform + '.';
+      dir = 'Number-first design built to be reused: a large countdown numeral slot with the event identity underneath.';
+      body.push(['COMPOSITION', 'A very large numeral area at the center as the focal point, with a short label slot beneath it, then the event title and date. Design it as a reusable template so the number can be swapped for each day of the countdown.']);
+      body.push(['COUNTDOWN CONTENT', req ? 'Use exactly as written:\n' + req : 'Do not choose a specific number of days. Leave the numeral and its label (for example, days left) as a clean placeholder area.']);
+      body.push(['TEXT HIERARCHY', hier + '.']);
+      break;
+    case 'recap':
+      intro = 'Design an event recap graphic, ' + ratio + ', for ' + platform + '.';
+      dir = 'A warm photo-led layout with a title, a thank-you line, and room for real event photos and highlights.';
+      body.push(['COMPOSITION', 'A grid or collage of empty photo frames (3 to 5) with consistent gutters, a title header, and a short highlights area. Celebratory but professional.']);
+      body.push(['HIGHLIGHTS CONTENT', req ? 'Use exactly as written:\n' + req : 'No highlights were supplied. Do not invent statistics, attendance numbers or quotes. Leave clean text areas for them.']);
+      body.push(['TEXT HIERARCHY', hier + '.']);
+      break;
+    case 'certificate':
+      intro = 'Design a certificate template, ' + ratio + ', for print.';
+      dir = 'Formal and print-ready: a refined border, ordered text zones, and generous empty lines for names and signatures.';
+      body.push(['COMPOSITION', 'A formal landscape layout with a thin ornamental border, a title band at the top, a wide empty line for the recipient name, a description line, and a bottom row with a date line and two signature lines. Keep margins at least 12 mm for printing.']);
+      body.push(['CERTIFICATE WORDING', req ? 'Use exactly as written:\n' + req : 'No certificate wording was supplied. Leave clean text zones for the certificate title, recipient name, description, date and signatures. Do not invent signatory names or titles.']);
+      body.push(['TEXT HIERARCHY', hier + '.']);
+      break;
+    case 'story':
+      intro = 'Design a vertical social media story graphic, ' + ratio + ', for ' + platform + '.';
+      dir = 'Full-bleed vertical composition with all key content kept inside the safe zone and a clear tap-to-act area.';
+      body.push(['SAFE ZONES', 'Keep all essential text and graphics at least 250 px from the top and bottom edges, because app interface elements cover those areas. The central safe zone holds the content.']);
+      body.push(['COMPOSITION', 'A bold full-bleed background built from the visual theme, the title in the upper-middle, details below it, and a clear space near the lower-middle for a link sticker.' + (hasTags ? '' : '')]);
+      body.push(['TEXT HIERARCHY', hier + '.']);
+      break;
+    default:
+      intro = 'Design a ' + name.toLowerCase() + ' publication material, ' + ratio + (platform ? ', for ' + platform : '') + '.';
+      dir = 'A custom material for "' + name + '". The layout follows the information supplied below and the stated hierarchy.';
+      body.push(['COMPOSITION', 'A clear focal point that expresses ' + (theme ? 'the theme "' + theme + '"' : 'the event') + ', with readable supporting information.']);
+      if (hier) body.push(['TEXT HIERARCHY', hier + '.']);
+  }
+  if (k !== 'program' && k !== 'speaker' && k !== 'announce' && k !== 'register' && k !== 'countdown' && k !== 'recap' && k !== 'certificate' && req) {
+    body.push(['REQUIRED TEXT, EXACTLY AS WRITTEN', req]);
+  }
+
+  const tail = [];
+  tail.push(['COLOR PALETTE', pal ? 'Use ' + pal + '.' : 'No color preference was given. Choose a cohesive, high-contrast palette that suits the theme.']);
+  if (clean(d.avoidColors)) tail.push(['COLORS TO AVOID', clean(d.avoidColors)]);
+  if (insp) tail.push(['VISUAL INSPIRATION AND MOOD', insp]);
+  if (clean(d.refs)) tail.push(['REFERENCES (for mood only; do not copy)', clean(d.refs)]);
+  if (clean(d.typography)) tail.push(['TYPOGRAPHY', clean(d.typography)]);
+  const brand = [clean(d.branding), clean(d.logos) && 'Logos: ' + clean(d.logos), clean(d.sponsors) && 'Sponsor acknowledgments: ' + clean(d.sponsors)].filter(Boolean).join('\n');
+  if (brand) tail.push(['BRANDING', brand]);
+  if (d.exactText.trim()) tail.push(['GLOBAL TEXT THAT MUST APPEAR EXACTLY', d.exactText.trim()]);
+  if (clean(s.extra)) tail.push(['ADDITIONAL INSTRUCTIONS', clean(s.extra)]);
+  if (d.blank) tail.push(['BLANK SPACES', 'Leave clean, intentionally empty areas for logos and for details that will be added later. Do not fill them with placeholder text or invented marks.']);
+  const informational = ['program', 'speaker', 'register', 'certificate', 'announce'].includes(k);
+  tail.push(['TEXT RENDERING', informational
+    ? 'Readability comes first. Render the supplied text only if every word can be spelled exactly as given; otherwise leave clean, aligned text areas so the text can be added manually afterward.'
+    : 'Prioritize composition and visual impact. Render the title only if it can be spelled exactly as given; otherwise leave a clean area for it. Never produce gibberish or misspelled text.']);
+  tail.push(['DO NOT INCLUDE', ['invented names, logos, sponsors, dates or credentials', 'watermarks', 'fake QR codes or URLs', d.avoidElements.trim()].filter(Boolean).join('; ') + '.']);
+
+  const lines = [intro, ''];
+  if (factLines.length) { lines.push('EVENT DETAILS (source facts; use only these):'); lines.push(...factLines); lines.push(''); }
+  body.concat(tail).forEach(b => { lines.push(b[0] + ': ' + b[1]); lines.push(''); });
+  lines.push('OUTPUT FORMAT: ' + ratio + (platform ? ', ' + platform : '') + '. Single finished image.');
+
+  let direction = dir;
+  if (pal) direction += ' Palette: ' + pal + '.';
+  if (insp) direction += ' Inspired by: ' + (insp.length > 140 ? insp.slice(0, 137) + '...' : insp);
+  return { name, direction, prompt: lines.join('\n').replace(/\n{3,}/g, '\n\n').trim() };
+}
+
+/* ---------- Summary ---------- */
+function buildSections(d) {
+  const secs = [];
+  const dateO = parseISO(d.date);
+  const a = dateO && d.subsidy !== null ? assess(dateO, d.subsidy, today) : null;
+  const tags = d.taglines.map(x => x.trim()).filter(Boolean);
+  const ov = [];
+  const add = (arr, l, v) => { if (v && String(v).trim()) arr.push([l, String(v).trim()]); };
+  add(ov, 'Title', d.title); add(ov, 'Theme', d.theme);
+  add(ov, 'Date', dateO ? fmtLong(dateO) : ''); add(ov, 'Time', fmtRange(d.start, d.end));
+  add(ov, 'Venue', d.venue); add(ov, 'Participants', d.participants);
+  if (tags.length) add(ov, tags.length > 1 ? 'Taglines' : 'Tagline', tags.map(x => '"' + x + '"').join('\n'));
+  add(ov, 'Additional notes', d.notes);
+  secs.push({ id: 'overview', title: 'Event Overview', rows: ov });
+
+  const fn = [];
+  if (d.subsidy !== null) {
+    add(fn, 'University subsidy', d.subsidy ? 'Yes, requesting a university subsidy' : 'No, not requesting a university subsidy');
+    add(fn, 'Minimum lead time', requiredLead(d.subsidy) + ' calendar days (' + (d.subsidy ? '3' : '2') + ' weeks)');
+  }
+  if (a) {
+    add(fn, 'Submission deadline', fmtLong(a.deadline));
+    add(fn, 'Deadline status', STATUS[a.status].label + '. ' + statusMessage(d, a));
+  }
+  secs.push({ id: 'funding', title: 'Funding and Administrative Requirements', rows: fn });
+
+  const sd = d.sdgs.slice().sort((x, y) => x.n - y.n).map(x => ['SDG ' + x.n + ': ' + sdgByN(x.n).name, x.expl.trim()]);
+  secs.push({ id: 'sdg', title: 'SDG Alignment', rows: sd, keepBlankValues: true });
+
+  const pm = [];
+  add(pm, 'Color palette', paletteText(d)); add(pm, 'Colors to avoid', d.avoidColors);
+  add(pm, 'Visual inspiration', d.inspiration); add(pm, 'References', d.refs);
+  const types = selectedTypes(d).map(t => t.k === 'other' ? (d.otherType.trim() || 'Other') : t.name);
+  add(pm, 'PubMat types', types.join(', '));
+  add(pm, 'Organization branding', d.branding); add(pm, 'Logos', d.logos); add(pm, 'Sponsor acknowledgments', d.sponsors);
+  add(pm, 'Typography', d.typography); add(pm, 'Exact text', d.exactText); add(pm, 'Elements to avoid', d.avoidElements);
+  if (d.blank) add(pm, 'Blank spaces', 'Leave space for logos and details to be added later');
+  secs.push({ id: 'pubmat', title: 'PubMat Creative Brief', rows: pm });
+  return secs.filter(s => s.rows.length);
+}
+function sectionsToText(secs, title) {
+  const out = [];
+  if (title) out.push(title);
+  secs.forEach(s => {
+    out.push('', s.title.toUpperCase());
+    s.rows.forEach(r => out.push(r[1] ? r[0] + ': ' + r[1] : r[0]));
+  });
+  return out.join('\n').trim();
+}
+
+/* ---------- App state ---------- */
+const $ = (s, r) => (r || document).querySelector(s);
+const root = document.getElementById('app');
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+let today = localToday();
+let store = loadStore();
+const ui = { view: 'dash', id: null, step: 1, cal: { y: today.y, m: today.m }, tab: 'prompts', editing: null, editText: '', showErrors: false,
+  panel: null, scope: 'all', confirmDel: null, importMsg: null, focus: null, sugRan: false };
+const cur = () => store.drafts.find(x => x.id === ui.id);
+function touch() { const d = cur(); if (d) { d.updatedAt = Date.now(); } scheduleSave(); }
+function paintSaved() {
+  const e = $('#savedInd'); if (!e) return;
+  if (memOnly) { e.className = 'saved bad'; e.textContent = 'Not saved: browser storage is unavailable. Use Export to keep your work.'; }
+  else if (lastSaved) { e.className = 'saved'; e.textContent = 'Saved on this device at ' + lastSaved.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }); }
+  else { e.className = 'saved'; e.textContent = 'Saved on this device'; }
+}
+let toastT;
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2400); }
+function copyText(text, label) {
+  const done = () => toast((label || 'Text') + ' copied to clipboard');
+  const fallback = () => {
+    const ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    let ok = false; try { ok = document.execCommand('copy'); } catch (e) { }
+    document.body.removeChild(ta);
+    if (ok) done(); else toast('Copy was blocked. Select the text and press Ctrl+C or Cmd+C.');
+  };
+  try { navigator.clipboard.writeText(text).then(done, fallback); } catch (e) { fallback(); }
+}
+function setPath(obj, path, val) {
+  const p = path.split('.'); let o = obj;
+  for (let i = 0; i < p.length - 1; i++) { if (o[p[i]] == null) o[p[i]] = {}; o = o[p[i]]; }
+  o[p[p.length - 1]] = val;
+}
+const badge = (cls, text) => '<span class="badge ' + cls + '">' + esc(text) + '</span>';
+function render(opts) {
+  opts = opts || {};
+  const y = window.scrollY;
+  root.innerHTML = ui.view === 'dash' ? dashHTML() : editorHTML();
+  paintSaved();
+  if (opts.top) window.scrollTo(0, 0); else window.scrollTo(0, y);
+  if (ui.focus) { const f = root.querySelector(ui.focus); if (f) f.focus({ preventScroll: true }); ui.focus = null; }
+}
+
+/* ---------- Dashboard ---------- */
+function draftStatus(d) {
+  const o = parseISO(d.date);
+  if (!o || d.subsidy === null) return null;
+  return assess(o, d.subsidy, today);
+}
+function dashHTML() {
+  const list = store.drafts.slice().sort((a, b) => b.updatedAt - a.updatedAt);
+  let h = '<div class="top"><div class="brand">EventForge<small>Event Proposal Planner</small></div><div class="grow"></div>' +
+    '<span id="savedInd" class="saved"></span></div>';
+  h += '<div class="row" style="justify-content:space-between;margin-bottom:14px"><div><h1>Event proposals</h1>' +
+    '<p class="muted small mono" style="margin-top:4px">Today is ' + esc(fmtLong(today)) + '</p></div>' +
+    '<div class="row"><button class="btn" data-act="togglePanel" data-v="import">Import</button>' +
+    '<button class="btn" data-act="togglePanel" data-v="export" data-scope="all"' + (list.length ? '' : ' disabled') + '>Export all</button>' +
+    '<button class="btn primary" data-act="newProposal">Create New Event Proposal</button></div></div>';
+  if (ui.panel === 'export') h += exportPanel();
+  if (ui.panel === 'import') h += importPanel();
+  if (!list.length) {
+    h += '<section class="panel empty"><h2>No proposals on this device yet</h2>' +
+      '<p>Start a proposal to check the submission deadline, pick SDGs, and generate PubMat prompts from one set of event details. You can start as many proposals as you need.</p>' +
+      '<div class="row" style="justify-content:center"><button class="btn primary" data-act="newProposal">Create New Event Proposal</button>' +
+      '<button class="btn" data-act="loadSample">Load a sample proposal</button></div></section>';
+  } else {
+    h += '<div class="dgrid">' + list.map(d => {
+      const a = draftStatus(d), o = parseISO(d.date), done = [1, 2, 3, 4].filter(i => stepDone(d, i)).length;
+      return '<article class="panel dcard" style="margin:0"><div><h3>' + esc(d.title.trim() || 'Untitled proposal') + '</h3>' +
+        '<div class="meta" style="margin-top:8px"><span>' + (o ? esc(fmtShort(o)) : 'No event date yet') + '</span>' +
+        '<span>' + (d.subsidy === null ? 'Funding not chosen' : d.subsidy ? 'With university subsidy (21 days)' : 'No university subsidy (14 days)') + '</span>' +
+        '<span>' + done + ' of 4 sections complete · updated ' + esc(new Date(d.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })) + '</span></div></div>' +
+        '<div class="row">' + (a ? badge(STATUS[a.status].cls, STATUS[a.status].label) : badge('neutral', 'Draft')) + '</div>' +
+        '<div class="row"><button class="btn primary sm" data-act="openDraft" data-id="' + d.id + '">Open</button>' +
+        '<button class="btn sm" data-act="dupDraft" data-id="' + d.id + '">Duplicate</button>' +
+        '<button class="btn sm" data-act="togglePanel" data-v="export" data-scope="' + d.id + '">Export</button>' +
+        (ui.confirmDel === d.id
+          ? '<button class="btn sm danger" data-act="delDraft" data-id="' + d.id + '">Confirm delete</button><button class="btn sm ghost" data-act="cancelDel">Cancel</button>'
+          : '<button class="btn sm ghost danger" data-act="askDel" data-id="' + d.id + '">Delete</button>') +
+        '</div></article>';
+    }).join('') + '</div>';
+  }
+  h += '<p class="muted small" style="margin-top:22px">Proposals are stored in this browser only. Use Export to copy them as JSON for backup or to move them to another device, and Import to bring them back.</p>';
+  return '<div class="app-inner">' + h + '</div>';
+}
+function exportPanel() {
+  const json = exportJSON(ui.scope);
+  return '<section class="panel" style="margin-bottom:16px"><h3>Export ' + (ui.scope === 'all' ? 'all proposals' : 'this proposal') + '</h3>' +
+    '<p class="lead small">Copy this JSON and save it in a text file (for example eventforge-backup.json). Direct file downloads are not available inside this page.</p>' +
+    '<textarea class="json" id="exportText" readonly aria-label="Export JSON">' + esc(json) + '</textarea>' +
+    '<div class="row" style="margin-top:10px"><button class="btn primary" data-act="copyExport">Copy JSON</button><button class="btn ghost" data-act="togglePanel" data-v="export">Close</button></div></section>';
+}
+function importPanel() {
+  const m = ui.importMsg;
+  return '<section class="panel" style="margin-bottom:16px"><h3>Import proposals</h3>' +
+    '<p class="lead small">Paste JSON from an EventForge export, or choose a saved .json file. Imported proposals are added next to your existing ones; nothing is overwritten.</p>' +
+    '<div class="field"><label for="impFile">Choose a file</label><input type="file" id="impFile" accept=".json,application/json,text/plain"></div>' +
+    '<div class="field" style="margin-top:10px"><label for="impText">Or paste JSON</label><textarea class="json" id="impText" placeholder="{ &quot;app&quot;: &quot;EventForge&quot;, ... }"></textarea></div>' +
+    (m ? '<div class="note ' + (m.ok ? 'ok' : 'bad') + '" style="margin-top:10px" role="alert">' + esc(m.ok ? 'Imported ' + plural(m.ok, 'proposal') + '.' : m.err) + '</div>' : '') +
+    '<div class="row" style="margin-top:10px"><button class="btn primary" data-act="doImport">Import</button><button class="btn ghost" data-act="togglePanel" data-v="import">Close</button></div></section>';
+}
+
+/* ---------- Editor shell ---------- */
+function editorHTML() {
+  const d = cur(); if (!d) { ui.view = 'dash'; return dashHTML(); }
+  let h = '<div class="top"><button class="btn sm" data-act="backDash">&larr; All proposals</button>' +
+    '<div class="brand grow" style="min-width:0;overflow-wrap:anywhere">' + esc(d.title.trim() || 'Untitled proposal') + '</div>' +
+    '<span id="savedInd" class="saved"></span>' +
+    '<button class="btn sm" data-act="togglePanel" data-v="export" data-scope="' + d.id + '">Export</button></div>';
+  if (ui.panel === 'export') h += exportPanel();
+  h += '<nav aria-label="Proposal steps"><ol class="stepper">' + STEPS.map((s, i) => {
+    const n = i + 1, done = n < 5 && stepDone(d, n);
+    return '<li><button class="step' + (done ? ' done' : '') + '" data-act="goStep" data-n="' + n + '"' + (ui.step === n ? ' aria-current="step"' : '') + '>' +
+      '<span class="n">' + (done ? '✓' : n) + '</span><span class="t">' + esc(s[0]) + '<small>' + esc(s[1]) + (done ? ' · complete' : '') + '</small></span></button></li>';
+  }).join('') + '</ol></nav>';
+  h += '<p class="stepcur">Step ' + ui.step + ' of 5: ' + esc(STEPS[ui.step - 1][0]) + '</p>';
+  h += '<div id="strip">' + stripHTML(d) + '</div>';
+  h += '<div id="stepbody">' + [step1, step2, step3, step4, step5][ui.step - 1](d) + '</div>';
+  h += '<div class="navrow"><button class="btn" data-act="back"' + (ui.step === 1 ? ' disabled' : '') + '>Back</button>' +
+    (ui.step < 5 ? '<button class="btn primary" data-act="next">Next: ' + esc(STEPS[ui.step][0]) + '</button>' : '<button class="btn primary" data-act="backDash">Done</button>') + '</div>';
+  return h;
+}
+function stripHTML(d) {
+  const o = parseISO(d.date), a = o && d.subsidy !== null ? assess(o, d.subsidy, today) : null;
+  const it = (l, v) => '<div class="it"><span>' + l + '</span><span>' + v + '</span></div>';
+  return '<div class="strip" role="region" aria-label="Deadline summary">' +
+    it('Funding', d.subsidy === null ? 'Not chosen' : d.subsidy ? 'University subsidy · 21 days' : 'No subsidy · 14 days') +
+    it('Event date', o ? esc(fmtShort(o)) : 'Not picked') +
+    it('Submit by', a ? esc(fmtShort(a.deadline)) : '—') +
+    it('Days to deadline', a ? (a.daysToDeadline >= 0 ? a.daysToDeadline : plural(-a.daysToDeadline, 'day') + ' overdue') : '—') +
+    '<div class="grow"></div>' + (a ? badge(STATUS[a.status].cls, STATUS[a.status].label) : badge('neutral', 'Pick funding and date')) + '</div>';
+}
+function refreshStrip() { const s = $('#strip'); const d = cur(); if (s && d) s.innerHTML = stripHTML(d); }
+
+/* ---------- Step 1: funding, calendar, checklist ---------- */
+function describeSelected(d) {
+  const o = parseISO(d.date); if (!o || d.subsidy === null) return '';
+  const a = assess(o, d.subsidy, today), e = earliestEligible(d.subsidy, today);
+  const st = STATUS[a.status];
+  let why;
+  if (a.past) why = fmtShort(o) + ' is red because it is in the past.';
+  else if (a.eligible) why = fmtShort(o) + ' is green: it is ' + plural(a.lead, 'calendar day') + ' from today, which meets the ' + a.req + '-day minimum.';
+  else why = fmtShort(o) + ' is red: it is only ' + plural(a.lead, 'calendar day') + ' from today and ' + a.req + ' are required. The earliest eligible date is ' + fmtShort(e) + '.';
+  return '<div class="note ' + (a.eligible ? (st.cls === 'warn' ? 'warn' : 'ok') : 'bad') + '" role="status"><strong>' +
+    (a.eligible ? (a.status === 'approaching' ? 'Eligible, deadline is close' : 'Eligible event date') : 'Warning: ' + (a.past ? 'date is in the past' : 'insufficient lead time')) + '</strong>' + esc(why) +
+    (a.eligible ? '' : ' You can keep this date, but the proposal stays marked as having insufficient lead time. The date was not changed.') + '</div>';
+}
+function calendarHTML(d) {
+  const { y, m } = ui.cal, sub = d.subsidy, req = requiredLead(sub);
+  const first = { y, m, d: 1 }, lead0 = weekdayOf(first), dim = daysInMonth(y, m);
+  const names = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  let cells = '';
+  for (let i = 0; i < lead0; i++) cells += '<div class="cell blank" aria-hidden="true"></div>';
+  for (let day = 1; day <= dim; day++) {
+    const o = { y, m, d: day }, iso = isoOf(o), lead = diffDays(o, today);
+    const isToday = lead === 0, sel = d.date === iso;
+    let cls = 'cell', glyph = '', label;
+    if (sub === null) { cls += ' neutral'; label = 'choose a funding option to see eligibility'; }
+    else if (lead >= req) { cls += ' ok'; glyph = '✓'; label = 'eligible, ' + plural(lead, 'day') + ' of lead time'; }
+    else { cls += ' no'; glyph = '✕'; label = lead < 0 ? 'in the past, not eligible' : 'too soon, ' + plural(lead, 'day') + ' of lead time, ' + req + ' required'; if (lead < 0) cls += ' past'; }
+    if (isToday) { cls += ' today'; label = 'today, ' + label; }
+    if (sel) cls += ' sel';
+    cells += '<button type="button" class="' + cls + '" data-act="pickDate" data-iso="' + iso + '" aria-pressed="' + sel + '" aria-label="' + esc(fmtLong(o) + ': ' + label + (sel ? ', selected' : '')) + '">' +
+      '<span class="n">' + day + '</span>' + (isToday ? '<span class="tg">Today</span>' : '') +
+      '<span class="m"><span class="g" aria-hidden="true">' + glyph + '</span><span aria-hidden="true">' + (lead > 0 ? lead + 'd' : '') + '</span></span></button>';
+  }
+  return '<section class="panel" style="margin:0"><div class="calhead"><button class="btn sm" data-act="calPrev" aria-label="Previous month">&larr;</button>' +
+    '<h3 aria-live="polite">' + esc(fmtMonth(y, m)) + '</h3><button class="btn sm" data-act="calNext" aria-label="Next month">&rarr;</button>' +
+    '<button class="btn sm ghost" data-act="calToday">Today</button></div>' +
+    '<div class="wk" aria-hidden="true">' + names.map(n => '<div>' + n + '</div>').join('') + '</div>' +
+    '<div class="grid7" id="calgrid">' + cells + '</div>' +
+    '<div class="legend" aria-label="Legend"><span><i class="sw ok"></i>✓ Eligible: meets the lead time</span><span><i class="sw no"></i>✕ Too soon or past</span>' +
+    '<span><i class="sw today"></i>Today</span><span><i class="sw sel"></i>Selected date</span><span class="muted">Number = days of lead time</span></div></section>';
+}
+function calSide(d) {
+  const sub = d.subsidy, o = parseISO(d.date);
+  const a = o && sub !== null ? assess(o, sub, today) : null;
+  let h = '<div class="stack"><section class="panel" style="margin:0"><h3>Eligibility summary</h3>';
+  if (sub === null) {
+    h += '<p class="muted" style="margin-top:6px">Choose a funding option above. The calendar colors and the earliest eligible date depend on it.</p>';
+  } else {
+    const e = earliestEligible(sub, today);
+    h += '<p style="margin:6px 0 12px">' + esc('With ' + (sub ? 'a university subsidy' : 'no university subsidy') + ', your earliest eligible event date is ' + fmtLong(e) + ', assuming the proposal is submitted today.') + '</p>' +
+      '<dl class="kv"><dt>Funding</dt><dd>' + (sub ? 'University subsidy requested' : 'No university subsidy') + '</dd>' +
+      '<dt>Required lead time</dt><dd>' + requiredLead(sub) + ' calendar days</dd>' +
+      '<dt>Earliest eligible date</dt><dd class="mono">' + esc(fmtShort(e)) + '</dd>' +
+      '<dt>Selected event date</dt><dd class="mono">' + (o ? esc(fmtShort(o)) : 'None picked') + '</dd>' +
+      '<dt>Submission deadline</dt><dd class="mono">' + (a ? esc(fmtShort(a.deadline)) : '—') + '</dd>' +
+      '<dt>Days until event</dt><dd class="mono">' + (a ? (a.lead < 0 ? plural(-a.lead, 'day') + ' ago' : a.lead) : '—') + '</dd>' +
+      '<dt>Eligibility</dt><dd>' + (a ? (a.eligible ? badge('ok', '✓ Eligible') : badge('bad', '✕ Not eligible')) : '—') + '</dd>' +
+      '<dt>Deadline status</dt><dd>' + (a ? badge(STATUS[a.status].cls, STATUS[a.status].label) : '—') + '</dd></dl>';
+  }
+  h += '<p class="hint" style="margin-top:12px">The calendar assumes the proposal is submitted today, ' + esc(fmtShort(today)) + '. Dates use calendar days, not business days.</p></section>';
+  if (o && sub !== null) {
+    h += '<section class="panel" style="margin:0"><h3>Selected date</h3><div class="stack" style="margin-top:10px">' + describeSelected(d) +
+      (a ? '<p class="small">' + esc(statusMessage(d, a)) + '</p>' : '') +
+      '<div class="row"><button class="btn sm" data-act="clearDate">Clear date</button></div></div></section>';
+  }
+  return h + '</div>';
+}
+function checklistHTML(d) {
+  const o = parseISO(d.date), a = o && d.subsidy !== null ? assess(o, d.subsidy, today) : null;
+  const auto = (ok, text) => '<li><span class="auto ' + (ok ? 'y' : '') + '" aria-hidden="true">' + (ok ? '✓' : '') + '</span><span>' + text + (ok ? ' <span class="sr-only">(done)</span>' : '') + '</span></li>';
+  const man = (id, text) => '<li class="check"><input type="checkbox" id="chk_' + id + '" data-bind="checklist.' + id + '"' + (d.checklist[id] ? ' checked' : '') + '><label for="chk_' + id + '">' + text + '</label></li>';
+  return '<section class="panel" style="margin-top:16px"><h3>Submission checklist</h3><p class="lead small">The first two items update by themselves. Tick the rest as you go.</p><ul class="chk">' +
+    auto(d.subsidy !== null, 'Funding decision made') +
+    auto(!!a && a.eligible, 'Event date gives at least ' + requiredLead(d.subsidy) + ' calendar days of lead time') +
+    man('submit', 'Submit the proposal' + (a ? ' on or before <strong>' + esc(fmtShort(a.deadline)) + '</strong>' : ' before the deadline')) +
+    (d.subsidy === true ? man('budget', 'Prepare the subsidy request details (confirm the exact documents with your university office)') : '') +
+    man('pubmat', 'Draft the publication materials') + '</ul></section>';
+}
+function step1(d) {
+  const e = ui.showErrors && d.subsidy === null;
+  return '<section class="panel"><h2 id="q1">Will this event request a university subsidy?</h2>' +
+    '<p class="lead">The answer sets the minimum submission lead time.</p>' +
+    '<div class="choice" role="radiogroup" aria-labelledby="q1">' +
+    '<button type="button" role="radio" aria-checked="' + (d.subsidy === true) + '" class="opt' + (d.subsidy === true ? ' on' : '') + '" data-act="subsidy" data-v="yes"><strong>Yes, requesting a university subsidy</strong><span>Submit at least 21 calendar days (3 weeks) before the event.</span></button>' +
+    '<button type="button" role="radio" aria-checked="' + (d.subsidy === false) + '" class="opt' + (d.subsidy === false ? ' on' : '') + '" data-act="subsidy" data-v="no"><strong>No, not requesting a university subsidy</strong><span>Submit at least 14 calendar days (2 weeks) before the event.</span></button></div>' +
+    (e ? '<p class="err" role="alert" style="margin-top:8px">Choose a funding option to continue.</p>' : '') + '</section>' +
+    '<div class="calwrap">' + calendarHTML(d) + calSide(d) + '</div>' + checklistHTML(d);
+}
+
+/* ---------- Step 2: event details ---------- */
+function errOf(k) { return ui.showErrors ? validate(cur())[k] : null; }
+function fld(label, id, control, o) {
+  o = o || {};
+  const e = o.err ? '<span class="err" id="' + id + '_e" role="alert">' + esc(o.err) + '</span>' : '';
+  return '<div class="field"><label for="' + id + '">' + label + (o.req ? '<span class="req" aria-hidden="true"> *</span>' : '') + (o.req ? '<span class="sr-only"> (required)</span>' : '') + '</label>' +
+    control + (o.hint ? '<span class="hint">' + o.hint + '</span>' : '') + e + '</div>';
+}
+function inp(id, bind, val, o) {
+  o = o || {};
+  return '<input type="' + (o.type || 'text') + '" id="' + id + '" data-bind="' + bind + '" value="' + esc(val) + '"' + (o.ph ? ' placeholder="' + esc(o.ph) + '"' : '') +
+    (o.err ? ' aria-invalid="true" aria-describedby="' + id + '_e"' : '') + (o.auto ? ' autocomplete="off"' : '') + '>';
+}
+function txa(id, bind, val, rows, ph, err) {
+  return '<textarea id="' + id + '" data-bind="' + bind + '" rows="' + (rows || 3) + '"' + (ph ? ' placeholder="' + esc(ph) + '"' : '') +
+    (err ? ' aria-invalid="true" aria-describedby="' + id + '_e"' : '') + '>' + esc(val) + '</textarea>';
+}
+function taglineRows(d) {
+  if (!d.taglines.length) return '<p class="muted small">No taglines yet. Taglines are optional.</p>';
+  return d.taglines.map((t, i) => '<div class="tgrow"><input type="text" id="tg' + i + '" data-bind="taglines.' + i + '" value="' + esc(t) + '" aria-label="Tagline ' + (i + 1) + '" placeholder="Tagline ' + (i + 1) + '">' +
+    '<button type="button" class="btn sm" data-act="rmTagline" data-i="' + i + '" aria-label="Remove tagline ' + (i + 1) + '">Remove</button></div>').join('');
+}
+function dateInfoHTML(d) {
+  const o = parseISO(d.date); if (!o || d.subsidy === null) return d.subsidy === null && d.date ? 'Choose a funding option in step 1 to see the deadline.' : '';
+  const a = assess(o, d.subsidy, today);
+  return esc(fmtLong(o)) + ' · submit by ' + esc(fmtShort(a.deadline)) + ' · ' + esc(STATUS[a.status].label) + (a.eligible ? '' : ' (this date does not meet the ' + a.req + '-day lead time)');
+}
+function step2(d) {
+  const E = validate(d), s = ui.showErrors, miss = Object.keys(E).filter(k => k !== 'subsidy');
+  let h = '';
+  if (s && miss.length) h += '<div class="note bad" role="alert" style="margin-bottom:16px"><strong>' + plural(miss.length, 'required field') + ' still need' + (miss.length === 1 ? 's' : '') + ' attention</strong>' + miss.map(k => esc(E[k])).join('<br>') + '</div>';
+  h += '<section class="panel"><h2>Event details</h2><p class="lead">Fields marked * are required. Everything here feeds the summary and the PubMat prompts.</p><div class="stack">' +
+    fld('Title', 'f_title', inp('f_title', 'title', d.title, { err: s && E.title, ph: 'Official name of the event' }), { req: 1, err: s && E.title }) +
+    fld('Theme', 'f_theme', txa('f_theme', 'theme', d.theme, 2, 'The central concept or topic', s && E.theme), { req: 1, err: s && E.theme }) +
+    '<div class="cols3">' +
+    fld('Date', 'f_date', inp('f_date', 'date', d.date, { type: 'date', err: s && E.date }), { req: 1, err: s && E.date }) +
+    fld('Start time', 'f_start', inp('f_start', 'start', d.start, { type: 'time', err: s && E.start }), { req: 1, err: s && E.start }) +
+    fld('End time', 'f_end', inp('f_end', 'end', d.end, { type: 'time', err: s && E.end }), { req: 1, err: s && E.end }) + '</div>' +
+    '<p class="small mono" id="dateInfo" aria-live="polite">' + dateInfoHTML(d) + '</p>' +
+    '<p class="small mono" id="timeInfo">' + (fmtRange(d.start, d.end) ? 'Time: ' + esc(fmtRange(d.start, d.end)) : '') + '</p>' +
+    fld('Venue', 'f_venue', inp('f_venue', 'venue', d.venue, { err: s && E.venue, ph: 'Room, building, or online platform (for example, Zoom)' }), { req: 1, err: s && E.venue }) +
+    fld('Participants', 'f_participants', txa('f_participants', 'participants', d.participants, 2, 'Intended participants, audience, or beneficiaries', s && E.participants), { req: 1, err: s && E.participants }) +
+    '<div class="field"><span class="lab">Taglines <span class="muted" style="font-weight:400">(optional)</span></span><div class="stack" style="gap:8px" id="tagrows">' + taglineRows(d) + '</div>' +
+    '<div><button type="button" class="btn sm" data-act="addTagline">Add tagline</button></div></div>' +
+    fld('Additional notes', 'f_notes', txa('f_notes', 'notes', d.notes, 3, 'Special instructions, logistics, or other information'), { hint: 'Optional.' }) +
+    '</div></section>';
+  return h;
+}
+
+/* ---------- Step 3: SDGs ---------- */
+function sdgCard(s, on, drag) {
+  return '<div class="sdg' + (on ? ' on' : '') + '" role="button" tabindex="0" aria-pressed="' + on + '" data-act="sdgToggle" data-n="' + s.n + '"' + (drag ? ' draggable="true"' : '') +
+    ' style="background:' + s.color + ';color:' + textOn(s.color) + '" aria-label="SDG ' + s.n + ': ' + esc(s.name) + (on ? ', selected' : '') + '">' +
+    '<span class="num">' + s.n + '</span><span class="nm">' + esc(s.name) + '</span></div>';
+}
+function selectedHTML(d) {
+  if (!d.sdgs.length) return '<p class="muted small" style="padding:10px">Nothing selected yet. Click or drag SDG cards here. Selecting a goal is your claim that the event supports it, so choose only goals with a real connection.</p>';
+  return d.sdgs.slice().sort((a, b) => a.n - b.n).map(x => {
+    const s = sdgByN(x.n);
+    return '<div class="selsdg"><div class="hd"><span class="mono" style="background:' + s.color + ';color:' + textOn(s.color) + ';padding:2px 8px;border-radius:4px;font-weight:500">' + s.n + '</span>' +
+      '<span class="nm">' + esc(s.name) + '</span>' + (x.src === 'suggested' ? '<span class="pill">Suggested, you accepted</span>' : '<span class="pill">Manual</span>') +
+      '<button class="btn sm" data-act="sdgRemove" data-n="' + s.n + '" aria-label="Remove SDG ' + s.n + '">Remove</button></div>' +
+      '<div class="bd"><label class="small" for="ex' + s.n + '" style="font-weight:600">How does this event support SDG ' + s.n + '? <span class="muted" style="font-weight:400">(optional)</span></label>' +
+      '<textarea id="ex' + s.n + '" rows="2" data-sdgx="' + s.n + '" placeholder="Explain the connection in a sentence or two">' + esc(x.expl) + '</textarea></div></div>';
+  }).join('');
+}
+function suggestionsHTML(d) {
+  if (!ui.sugRan) return '';
+  const list = suggestSDGs(d);
+  let h = '<div class="stack" style="margin-top:12px" id="sugbox">';
+  if (!list.length) h += '<p class="small muted">No new suggestions. Add more detail to the title, theme or participants, or choose goals yourself.</p>';
+  list.forEach(x => {
+    const s = sdgByN(x.n);
+    h += '<div class="sug"><div class="row"><span class="mono" style="background:' + s.color + ';color:' + textOn(s.color) + ';padding:2px 8px;border-radius:4px">' + s.n + '</span><strong class="small">' + esc(s.name) + '</strong><span class="pill">Suggestion</span></div>' +
+      '<p class="small">Possible link: your details mention ' + x.hits.map(k => '"' + esc(k) + '"').join(', ') + '. Check that this goal matches what the event actually does.</p>' +
+      '<div class="row"><button class="btn sm primary" data-act="acceptSug" data-n="' + s.n + '">Accept</button><button class="btn sm" data-act="rejectSug" data-n="' + s.n + '">Reject</button></div></div>';
+  });
+  return h + '</div>';
+}
+function step3(d) {
+  const ids = d.sdgs.map(x => x.n);
+  return '<section class="panel"><h2>SDG alignment</h2><p class="lead">Select the United Nations Sustainable Development Goals this event genuinely supports. Click a card, or drag it into Selected SDGs.</p>' +
+    '<div class="note small" style="margin-bottom:14px"><strong>Suggestions</strong>AI assistance is not configured in this build, so suggestions come from simple keyword matching on your title, theme and participants. They are only prompts to consider, never added until you accept them.' +
+    '<div style="margin-top:8px"><button class="btn sm" data-act="suggest">Suggest SDGs from my details</button></div><div id="sugwrap">' + suggestionsHTML(d) + '</div></div>' +
+    '<div class="sdgcols"><div><h3 style="margin-bottom:8px">Available SDGs</h3><div class="sdggrid dropzone-av" data-drop="available" id="avail">' + SDGS.map(s => sdgCard(s, ids.includes(s.n), true)).join('') + '</div></div>' +
+    '<div><h3 style="margin-bottom:8px">Selected SDGs <span class="mono muted">(' + d.sdgs.length + ')</span></h3><div class="dropzone" data-drop="selected" id="seldrop" aria-label="Selected SDGs drop area">' + selectedHTML(d) + '</div></div></div></section>';
+}
+
+/* ---------- Step 4: PubMat design brief ---------- */
+function colorChips(d) {
+  if (!d.colors.length) return '';
+  return '<div class="chips">' + d.colors.map((c, i) => '<span class="chip"><i style="background:' + esc(c.hex) + '"></i>' + esc(c.name.trim() || c.hex.toUpperCase()) + ' <span class="mono small muted">' + esc(c.hex.toUpperCase()) + '</span>' +
+    '<button type="button" data-act="rmColor" data-i="' + i + '" aria-label="Remove color ' + esc(c.name || c.hex) + '">✕</button></span>').join('') + '</div>';
+}
+function pmSettings(d, t) {
+  const s = d.pm[t.k]; if (!s || !s.on) return '';
+  const nm = t.k === 'other' ? (d.otherType.trim() || 'Other') : t.name, id = 'pm_' + t.k;
+  return '<div class="pmset"><h4>' + esc(nm) + ' settings</h4>' +
+    (t.k === 'other' ? fld('Specify the type', id + '_ot', inp(id + '_ot', 'otherType', d.otherType, { ph: 'For example: Merchandise tag, Banner, Lanyard' }), { req: 1 }) : '') +
+    '<div class="cols2">' + fld('Target platform or placement', id + '_pl', inp(id + '_pl', 'pm.' + t.k + '.platform', s.platform)) +
+    fld('Aspect ratio or dimensions', id + '_ra', inp(id + '_ra', 'pm.' + t.k + '.ratio', s.ratio)) + '</div>' +
+    fld('Required text or information', id + '_rt', txa(id + '_rt', 'pm.' + t.k + '.requiredText', s.requiredText, 3,
+      t.k === 'speaker' ? 'Speaker name and credentials, exactly as they should appear' : t.k === 'program' ? 'One line per item, for example: 1:00 PM - Opening remarks' : 'Text that must appear exactly as written'),
+      { hint: 'Optional. It is copied into the prompt word for word. Nothing is invented if you leave this empty.' }) +
+    fld('Preferred visual hierarchy', id + '_hi', txa(id + '_hi', 'pm.' + t.k + '.hier', s.hier, 2)) +
+    fld('Additional design instructions', id + '_ex', txa(id + '_ex', 'pm.' + t.k + '.extra', s.extra, 2, 'Anything specific to this material')) + '</div>';
+}
+function step4(d) {
+  let h = '<section class="panel"><h2>PubMat Design Brief</h2><p class="lead">The visual direction used to write one image-generation prompt per material. Everything except the PubMat types is optional.</p><div class="stack">';
+  h += '<div class="field"><span class="lab">What hues or colors should be used?</span>' +
+    '<input type="text" id="colorText" data-bind="colorText" value="' + esc(d.colorText) + '" placeholder="For example: dark navy and electric blue, or a green-and-white technology theme">' +
+    '<div class="row" style="margin-top:6px"><input type="color" id="colHex" value="#2848d4" aria-label="Pick a color"><input type="text" id="colName" placeholder="Color name (optional)" style="flex:1;min-width:140px" aria-label="Color name">' +
+    '<button type="button" class="btn sm" data-act="addColor">Add color</button></div><div id="chipwrap" style="margin-top:6px">' + colorChips(d) + '</div></div>' +
+    fld('Colors to avoid', 'avoidColors', inp('avoidColors', 'avoidColors', d.avoidColors, { ph: 'Optional' })) +
+    fld('What is your inspiration for the visual graphic?', 'inspiration', txa('inspiration', 'inspiration', d.inspiration, 4,
+      'Mood, composition, imagery, typography, lighting. For example: futuristic cybersecurity interfaces, circuit-board patterns, clean corporate technology aesthetics'), {}) +
+    fld('References or inspiration links', 'refs', inp('refs', 'refs', d.refs, { ph: 'Optional: links or descriptions of reference designs' }), { hint: 'Links are passed to the prompt as text. Uploading reference images is not supported here; attach them in your image tool.' }) +
+    '</div></section>';
+  h += '<section class="panel"><h2>What publication material do you want to create?</h2><p class="lead">Choose one or more. Each gets its own tailored prompt.</p>' +
+    '<div class="types" role="group" aria-label="PubMat types">' + PM_TYPES.map(t => {
+      const on = d.pm[t.k] && d.pm[t.k].on;
+      return '<button type="button" class="tcard' + (on ? ' on' : '') + '" role="checkbox" aria-checked="' + !!on + '" data-act="pmToggle" data-k="' + t.k + '"><span class="tick" aria-hidden="true">' + (on ? '✓' : '') + '</span><span><strong>' + esc(t.name) + '</strong>' +
+        (t.platform ? '<span class="hint" style="display:block">' + esc(t.ratio.split(' (')[0]) + '</span>' : '') + '</span></button>';
+    }).join('') + '</div><div class="stack" style="margin-top:16px" id="pmsettings">' + PM_TYPES.map(t => pmSettings(d, t)).join('') + '</div></section>';
+  h += '<section class="panel"><h2>Additional design requirements</h2><p class="lead">All optional.</p><div class="stack"><div class="cols2">' +
+    fld('Organization or institutional branding', 'branding', txa('branding', 'branding', d.branding, 2, 'Brand colors, style rules, organization name')) +
+    fld('Required logos and placement', 'logos', txa('logos', 'logos', d.logos, 2, 'For example: university seal top-left, organization logo top-right')) +
+    fld('Sponsor acknowledgments', 'sponsors', txa('sponsors', 'sponsors', d.sponsors, 2, 'Sponsor names exactly as they should appear')) +
+    fld('Typography preferences', 'typography', txa('typography', 'typography', d.typography, 2, 'For example: bold geometric sans-serif headlines')) +
+    fld('Text that must appear exactly as provided', 'exactText', txa('exactText', 'exactText', d.exactText, 2, 'Applies to every material')) +
+    fld('Elements that must not appear', 'avoidElements', txa('avoidElements', 'avoidElements', d.avoidElements, 2, 'For example: stock-photo people, cartoon characters')) + '</div>' +
+    '<div class="check"><input type="checkbox" id="blank" data-bind="blank"' + (d.blank ? ' checked' : '') + '><label for="blank">Leave blank spaces for logos or details to be added later</label></div></div></section>';
+  return h;
+}
+
+/* ---------- Step 5: prompts and summary ---------- */
+function ensurePrompts(d) {
+  selectedTypes(d).forEach(t => {
+    const g = genPrompt(d, t.k), p = d.prompts[t.k];
+    if (!p) d.prompts[t.k] = { original: g.prompt, text: g.prompt, edited: false };
+    else if (!p.edited) { p.original = g.prompt; p.text = g.prompt; }
+  });
+}
+function promptCards(d) {
+  const types = selectedTypes(d);
+  if (!types.length) return '<div class="panel empty"><h3>No PubMat types selected</h3><p>Pick at least one publication material in the design brief and a prompt is written for it.</p><button class="btn primary" data-act="goStep" data-n="4">Go to the design brief</button></div>';
+  ensurePrompts(d);
+  return types.map(t => {
+    const g = genPrompt(d, t.k), p = d.prompts[t.k], editing = ui.editing === t.k, stale = p.edited && g.prompt !== p.original;
+    return '<article class="pcard"><div class="ph"><h3 class="grow">' + esc(g.name) + '</h3>' + badge('neutral', 'Template-generated, no AI model used') + (p.edited ? badge('accent', 'Edited') : '') + '</div><div class="pb">' +
+      '<div><div class="plabel">Design direction</div><p>' + esc(g.direction) + '</p></div>' +
+      (stale ? '<div class="note warn small"><strong>Event details changed</strong>This prompt has your edits, so it was not updated. Use Regenerate to rebuild it from the latest details (your edits will be replaced).</div>' : '') +
+      '<div><div class="plabel">Generated AI prompt</div>' +
+      (editing ? '<textarea class="prompt" id="editPrompt" rows="16" aria-label="Edit prompt for ' + esc(g.name) + '">' + esc(ui.editText) + '</textarea>' : '<pre class="prompt" tabindex="0">' + esc(p.text) + '</pre>') + '</div>' +
+      '<div class="row">' + (editing
+        ? '<button class="btn primary sm" data-act="savePrompt" data-k="' + t.k + '">Save edits</button><button class="btn sm" data-act="cancelPrompt">Cancel</button>'
+        : '<button class="btn primary sm" data-act="copyPrompt" data-k="' + t.k + '">Copy Prompt</button><button class="btn sm" data-act="editPrompt" data-k="' + t.k + '">Edit Prompt</button>' +
+        '<button class="btn sm" data-act="regenPrompt" data-k="' + t.k + '">Regenerate Prompt</button>' +
+        '<button class="btn sm ghost" data-act="resetPrompt" data-k="' + t.k + '"' + (p.edited ? '' : ' disabled') + '>Reset to Original Generated Prompt</button>') + '</div></div></article>';
+  }).join('');
+}
+function summaryHTML(d) {
+  const secs = buildSections(d);
+  return '<section class="panel"><div class="row" style="justify-content:space-between;margin-bottom:10px"><h2>' + esc(d.title.trim() || 'Event summary') + '</h2></div>' +
+    '<div class="row" style="margin-bottom:14px"><button class="btn primary sm" data-act="copySummary" data-v="full">Copy Full Summary</button>' +
+    '<button class="btn sm" data-act="copySummary" data-v="details">Copy Event Details Only</button>' +
+    '<button class="btn sm" data-act="goStep" data-n="2">Edit Event</button><button class="btn sm" data-act="tab" data-v="prompts">Return to PubMat Prompts</button></div>' +
+    (secs.length ? secs.map(s => '<div class="sumsec"><h3>' + esc(s.title) + '</h3><dl class="kv">' + s.rows.map(r => r[1]
+      ? '<dt>' + esc(r[0]) + '</dt><dd style="white-space:pre-line">' + esc(r[1]) + '</dd>'
+      : '<dt style="grid-column:1/-1;color:var(--ink);font-weight:500">' + esc(r[0]) + '</dt>').join('') + '</dl></div>').join('')
+      : '<p class="muted">Nothing to summarize yet. Fill in the event details first.</p>') + '</section>';
+}
+function step5(d) {
+  const E = validate(d); const miss = Object.keys(E).filter(k => k !== 'subsidy' || true);
+  const o = parseISO(d.date), a = o && d.subsidy !== null ? assess(o, d.subsidy, today) : null;
+  let h = '';
+  if (a && (a.status === 'insufficient' || a.status === 'late')) h += '<div class="note bad" role="alert" style="margin-bottom:14px"><strong>' + esc(STATUS[a.status].label) + '</strong>' + esc(statusMessage(d, a)) + '</div>';
+  else if (a && a.status === 'approaching') h += '<div class="note warn" style="margin-bottom:14px"><strong>' + esc(STATUS[a.status].label) + '</strong>' + esc(statusMessage(d, a)) + '</div>';
+  if (miss.length) h += '<div class="note warn" style="margin-bottom:14px"><strong>Missing information</strong>' + miss.map(k => esc(E[k])).join('<br>') + '<div class="row" style="margin-top:8px"><button class="btn sm" data-act="goStep" data-n="' + (E.subsidy ? 1 : 2) + '">Fix it</button></div></div>';
+  h += '<div class="tabs" role="tablist"><button class="tab" role="tab" aria-selected="' + (ui.tab === 'prompts') + '" data-act="tab" data-v="prompts">PubMat prompts</button>' +
+    '<button class="tab" role="tab" aria-selected="' + (ui.tab === 'summary') + '" data-act="tab" data-v="summary">Event summary</button></div>';
+  if (ui.tab === 'prompts') {
+    h += '<p class="muted small" style="margin-bottom:14px">Each prompt is built from your event details with a built-in template. No AI provider was called. Paste a prompt into any image-generation tool.</p>' + promptCards(d);
+  } else h += summaryHTML(d);
+  return h;
+}
+
+/* ---------- Event wiring ---------- */
+function openDraft(id) {
+  const d = store.drafts.find(x => x.id === id); if (!d) return;
+  ui.id = id; ui.view = 'edit'; ui.step = d.lastStep || 1; ui.panel = null; ui.tab = 'prompts'; ui.editing = null; ui.showErrors = false; ui.sugRan = false;
+  const o = parseISO(d.date); ui.cal = o ? { y: o.y, m: o.m } : { y: today.y, m: today.m };
+  render({ top: true });
+}
+function goStep(n) { const d = cur(); ui.step = n; d.lastStep = n; ui.showErrors = false; ui.editing = null; touch(); render({ top: true }); }
+const FIRST_FOCUS = { title: '#f_title', theme: '#f_theme', date: '#f_date', start: '#f_start', end: '#f_end', venue: '#f_venue', participants: '#f_participants' };
+const A = {
+  newProposal() { const d = newDraft(); store.drafts.unshift(d); saveNow(); openDraft(d.id); },
+  loadSample() {
+    const d = newDraft(), ev = addDays(today, 30);
+    Object.assign(d, { subsidy: false, title: 'CyberSafe Week: Digital Defense Workshop (Sample)', theme: 'Building safer online habits for students', date: isoOf(ev), start: '13:00', end: '17:00',
+      venue: 'Online via Zoom', participants: 'BS Information Technology and Computer Science students', taglines: ['Think before you click.'],
+      colors: [{ name: 'Dark navy', hex: '#0b1f3a' }, { name: 'Electric blue', hex: '#1e6bff' }], inspiration: 'Futuristic cybersecurity interfaces with subtle circuit-board patterns' });
+    d.sdgs = [{ n: 4, expl: 'Teaches practical digital safety skills to students.', src: 'manual' }, { n: 9, expl: '', src: 'manual' }];
+    d.pm.poster = { on: true, platform: pmType('poster').platform, ratio: pmType('poster').ratio, hier: pmType('poster').hier, requiredText: '', extra: '' };
+    d.pm.speaker = { on: true, platform: pmType('speaker').platform, ratio: pmType('speaker').ratio, hier: pmType('speaker').hier, requiredText: '', extra: '' };
+    store.drafts.unshift(d); saveNow(); openDraft(d.id);
+  },
+  openDraft(t) { openDraft(t.dataset.id); },
+  dupDraft(t) { const s = store.drafts.find(x => x.id === t.dataset.id); const c = normalizeDraft(JSON.parse(JSON.stringify(s))); c.id = uid(); c.title = (s.title.trim() || 'Untitled proposal') + ' (copy)'; c.createdAt = c.updatedAt = Date.now(); store.drafts.unshift(c); saveNow(); render(); toast('Proposal duplicated'); },
+  askDel(t) { ui.confirmDel = t.dataset.id; render(); },
+  cancelDel() { ui.confirmDel = null; render(); },
+  delDraft(t) { store.drafts = store.drafts.filter(x => x.id !== t.dataset.id); ui.confirmDel = null; saveNow(); render(); toast('Proposal deleted'); },
+  backDash() { saveNow(); ui.view = 'dash'; ui.id = null; ui.panel = null; render({ top: true }); },
+  togglePanel(t) {
+    const v = t.dataset.v, sc = t.dataset.scope;
+    const same = ui.panel === v && (!sc || ui.scope === sc);
+    if (sc) ui.scope = sc;
+    ui.panel = same ? null : v; ui.importMsg = null; render();
+  },
+  copyExport() { copyText($('#exportText').value, 'Export JSON'); },
+  doImport() {
+    const txt = ($('#impText').value || '').trim();
+    ui.importMsg = txt ? importText(txt) : { err: 'Paste JSON or choose a file first.' };
+    render(); const m = ui.importMsg; if (m && m.err && txt) $('#impText').value = txt;
+  },
+  goStep(t) { goStep(+t.dataset.n); },
+  next() {
+    const d = cur();
+    if (ui.step === 1 && d.subsidy === null) { ui.showErrors = true; ui.focus = '[data-act=subsidy]'; render(); return; }
+    if (ui.step === 2) {
+      const E = validate(d); delete E.subsidy; const k = Object.keys(E)[0];
+      if (k) { ui.showErrors = true; ui.focus = FIRST_FOCUS[k]; render(); return; }
+    }
+    goStep(ui.step + 1);
+  },
+  back() { goStep(ui.step - 1); },
+  subsidy(t) { const d = cur(); d.subsidy = t.dataset.v === 'yes'; touch(); ui.focus = '[data-act=subsidy][aria-checked=true]'; render(); },
+  calPrev() { let { y, m } = ui.cal; m--; if (m < 1) { m = 12; y--; } ui.cal = { y, m }; ui.focus = '[data-act=calPrev]'; render(); },
+  calNext() { let { y, m } = ui.cal; m++; if (m > 12) { m = 1; y++; } ui.cal = { y, m }; ui.focus = '[data-act=calNext]'; render(); },
+  calToday() { ui.cal = { y: today.y, m: today.m }; render(); },
+  pickDate(t) { const d = cur(); d.date = t.dataset.iso; touch(); ui.focus = '.cell[data-iso="' + t.dataset.iso + '"]'; render(); },
+  clearDate() { const d = cur(); d.date = ''; touch(); render(); },
+  addTagline() { const d = cur(); d.taglines.push(''); touch(); ui.focus = '#tg' + (d.taglines.length - 1); render(); },
+  rmTagline(t) { const d = cur(); d.taglines.splice(+t.dataset.i, 1); touch(); ui.focus = '[data-act=addTagline]'; render(); },
+  sdgToggle(t) {
+    const d = cur(), n = +t.dataset.n, i = d.sdgs.findIndex(x => x.n === n);
+    if (i >= 0) d.sdgs.splice(i, 1); else d.sdgs.push({ n, expl: '', src: 'manual' });
+    touch(); ui.focus = '.sdg[data-n="' + n + '"]'; render();
+  },
+  sdgRemove(t) { const d = cur(); d.sdgs = d.sdgs.filter(x => x.n !== +t.dataset.n); touch(); render(); },
+  suggest() { const d = cur(); ui.sugRan = true; d.sugRejected = []; render(); },
+  acceptSug(t) { const d = cur(), n = +t.dataset.n; if (!d.sdgs.some(x => x.n === n)) d.sdgs.push({ n, expl: '', src: 'suggested' }); touch(); render(); },
+  rejectSug(t) { const d = cur(); d.sugRejected.push(+t.dataset.n); touch(); render(); },
+  addColor() { const d = cur(); d.colors.push({ name: $('#colName').value.trim(), hex: $('#colHex').value }); touch(); render(); },
+  rmColor(t) { const d = cur(); d.colors.splice(+t.dataset.i, 1); touch(); render(); },
+  pmToggle(t) {
+    const d = cur(), k = t.dataset.k, ty = pmType(k);
+    if (!d.pm[k]) d.pm[k] = { on: true, platform: ty.platform, ratio: ty.ratio, hier: ty.hier, requiredText: '', extra: '' }; else d.pm[k].on = !d.pm[k].on;
+    touch(); ui.focus = '.tcard[data-k="' + k + '"]'; render();
+  },
+  tab(t) { ui.tab = t.dataset.v; ui.editing = null; render({ top: true }); },
+  copyPrompt(t) { const p = cur().prompts[t.dataset.k]; copyText(p.text, 'Prompt'); },
+  editPrompt(t) { ui.editing = t.dataset.k; ui.editText = cur().prompts[t.dataset.k].text; ui.focus = '#editPrompt'; render(); },
+  savePrompt(t) { const p = cur().prompts[t.dataset.k]; p.text = ui.editText; p.edited = p.text !== p.original; ui.editing = null; touch(); render(); toast('Prompt saved. Your event details were not changed.'); },
+  cancelPrompt() { ui.editing = null; render(); },
+  regenPrompt(t) { const d = cur(), k = t.dataset.k, g = genPrompt(d, k); d.prompts[k] = { original: g.prompt, text: g.prompt, edited: false }; ui.editing = null; touch(); render(); toast('Prompt regenerated from the latest details'); },
+  resetPrompt(t) { const p = cur().prompts[t.dataset.k]; p.text = p.original; p.edited = false; touch(); render(); toast('Prompt reset to the original'); },
+  copySummary(t) {
+    const d = cur(), secs = buildSections(d), full = t.dataset.v === 'full';
+    const use = full ? secs : secs.filter(s => s.id === 'overview');
+    copyText(sectionsToText(use, (d.title.trim() || 'Event') + ' — ' + (full ? 'Event Proposal Summary' : 'Event Details')), full ? 'Full summary' : 'Event details');
+  }
+};
+root.addEventListener('click', e => {
+  const t = e.target.closest('[data-act]'); if (!t || t.disabled) return;
+  if (A[t.dataset.act]) A[t.dataset.act](t, e);
+});
+root.addEventListener('keydown', e => {
+  const t = e.target;
+  if ((e.key === 'Enter' || e.key === ' ') && t.matches && t.matches('.sdg')) { e.preventDefault(); t.click(); return; }
+  if (t.matches && t.matches('.cell') && /^Arrow/.test(e.key)) {
+    const cells = Array.from(root.querySelectorAll('.cell:not(.blank)')), i = cells.indexOf(t);
+    const step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 }[e.key], n = cells[i + step];
+    if (n) { e.preventDefault(); n.focus(); }
+  }
+});
+function onField(t) {
+  const d = cur(); if (!d) return;
+  if (t.id === 'editPrompt') { ui.editText = t.value; return; }
+  if (t.dataset.sdgx) { const x = d.sdgs.find(s => s.n === +t.dataset.sdgx); if (x) { x.expl = t.value; touch(); } return; }
+  if (!t.dataset.bind) return;
+  setPath(d, t.dataset.bind, t.type === 'checkbox' ? t.checked : t.value);
+  touch();
+  if (t.dataset.bind === 'date') { const o = parseISO(d.date); if (o) ui.cal = { y: o.y, m: o.m }; const di = $('#dateInfo'); if (di) di.innerHTML = dateInfoHTML(d); refreshStrip(); }
+  if (t.dataset.bind === 'start' || t.dataset.bind === 'end') { const ti = $('#timeInfo'); if (ti) ti.textContent = fmtRange(d.start, d.end) ? 'Time: ' + fmtRange(d.start, d.end) : ''; }
+}
+root.addEventListener('input', e => onField(e.target));
+root.addEventListener('change', e => {
+  const t = e.target;
+  if (t.id === 'impFile' && t.files && t.files[0]) {
+    const r = new FileReader(); r.onload = () => { const ta = $('#impText'); if (ta) ta.value = String(r.result || ''); }; r.readAsText(t.files[0]); return;
+  }
+  onField(t);
+});
+// Drag and drop into Selected SDGs
+root.addEventListener('dragstart', e => { const c = e.target.closest && e.target.closest('.sdg[data-n]'); if (c) { e.dataTransfer.setData('text/plain', 'sdg:' + c.dataset.n); e.dataTransfer.effectAllowed = 'copy'; } });
+root.addEventListener('dragover', e => { const z = e.target.closest && e.target.closest('[data-drop="selected"]'); if (z) { e.preventDefault(); z.classList.add('over'); } });
+root.addEventListener('dragleave', e => { const z = e.target.closest && e.target.closest('[data-drop="selected"]'); if (z && !z.contains(e.relatedTarget)) z.classList.remove('over'); });
+root.addEventListener('drop', e => {
+  const z = e.target.closest && e.target.closest('[data-drop="selected"]'); if (!z) return;
+  e.preventDefault(); z.classList.remove('over');
+  const m = /^sdg:(\d+)$/.exec(e.dataTransfer.getData('text/plain') || ''); if (!m) return;
+  const d = cur(), n = +m[1];
+  if (d.sdgs.some(x => x.n === n)) { toast('SDG ' + n + ' is already selected'); return; }
+  d.sdgs.push({ n, expl: '', src: 'manual' }); touch(); ui.focus = '.sdg[data-n="' + n + '"]'; render();
+});
+// Keep the calendar correct if the page stays open across midnight
+function checkDay() {
+  const t = localToday();
+  if (diffDays(t, today) !== 0) { today = t; if (ui.view === 'edit') { const d = cur(); const o = d && parseISO(d.date); if (!o) ui.cal = { y: t.y, m: t.m }; } render(); }
+}
+setInterval(checkDay, 30000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) checkDay(); });
+render();
+</script>
+
+</body></html>
